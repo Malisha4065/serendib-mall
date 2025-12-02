@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+package product.v1;
+
+option java_multiple_files = true;
+option java_package = "com.serendibmall.product.v1";
+option java_outer_classname = "ProductProto";
+
+service ProductService {
+  // Get a single product by ID
+  rpc GetProduct (GetProductRequest) returns (ProductResponse);
+
+  // Search for products
+  rpc SearchProducts (SearchProductsRequest) returns (SearchProductsResponse);
+}
+
+message GetProductRequest {
+  string product_id = 1;
+}
+
+message SearchProductsRequest {
+  string query = 1;
+  int32 page = 2;
+  int32 size = 3;
+}
+
+message ProductResponse {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  double price = 4;
+  string currency = 5;
+  string category = 6;
+  repeated string images = 7;
+}
+
+message SearchProductsResponse {
+  repeated ProductResponse products = 1;
+  int32 total_count = 2;
+  int32 total_pages = 3;
+}
