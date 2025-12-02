@@ -30,15 +30,25 @@ repositories {
 extra["springCloudVersion"] = "2025.0.0"
 extra["springGrpcVersion"] = "0.12.0"
 
+sourceSets {
+    main {
+        proto {
+            srcDir("../proto") 
+        }
+    }
+}
+
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-actuator")
 	implementation("org.springframework.boot:spring-boot-starter-graphql")
 	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
 	implementation("org.springframework.boot:spring-boot-starter-security")
 	implementation("org.springframework.boot:spring-boot-starter-web")
-	implementation("io.grpc:grpc-services")
 	implementation("org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j")
-	implementation("org.springframework.grpc:spring-grpc-server-web-spring-boot-starter")
+	implementation("org.springframework.grpc:spring-grpc-client-spring-boot-starter")
+	implementation("io.grpc:grpc-services")
+	implementation("io.grpc:grpc-stub")
+	implementation("io.grpc:grpc-protobuf")
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -57,11 +67,11 @@ dependencyManagement {
 
 protobuf {
 	protoc {
-		artifact = "com.google.protobuf:protoc"
+		artifact = "com.google.protobuf:protoc:3.25.1"
 	}
 	plugins {
 		id("grpc") {
-			artifact = "io.grpc:protoc-gen-grpc-java"
+			artifact = "io.grpc:protoc-gen-grpc-java:1.64.0"
 		}
 	}
 	generateProtoTasks {
