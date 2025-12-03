@@ -42,7 +42,7 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-elasticsearch")
 	implementation("org.springframework.boot:spring-boot-starter-web")
 	implementation("io.grpc:grpc-services")
-	implementation("org.springframework.grpc:spring-grpc-server-web-spring-boot-starter")
+	implementation("org.springframework.grpc:spring-grpc-server-spring-boot-starter")
 	implementation("org.springframework.kafka:spring-kafka")
 	compileOnly("org.projectlombok:lombok")
 	annotationProcessor("org.projectlombok:lombok")
