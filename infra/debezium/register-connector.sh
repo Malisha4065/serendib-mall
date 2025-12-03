@@ -1,13 +1,13 @@
 #!/bin/bash
 
 echo "Waiting for Debezium Connect to be ready..."
-until curl -f http://localhost:8083/ > /dev/null 2>&1; do
+until curl -f http://localhost:8087/ > /dev/null 2>&1; do
   echo "Debezium Connect not ready yet, waiting..."
   sleep 2
 done
 
 echo "Registering Debezium PostgreSQL Connector..."
-curl -X POST http://localhost:8083/connectors \
+curl -X POST http://localhost:8087/connectors \
   -H "Content-Type: application/json" \
   -d '{
     "name": "product-events-connector",
@@ -18,6 +18,7 @@ curl -X POST http://localhost:8083/connectors \
       "database.user": "postgres",
       "database.password": "password",
       "database.dbname": "product_db",
+      "topic.prefix": "dbserver1",
       "database.server.name": "dbserver1",
       "table.include.list": "public.product_events",
       "plugin.name": "pgoutput",
@@ -32,4 +33,4 @@ curl -X POST http://localhost:8083/connectors \
 
 echo ""
 echo "Connector registered! Checking status..."
-curl -s http://localhost:8083/connectors/product-events-connector/status | jq .
+curl -s http://localhost:8087/connectors/product-events-connector/status | jq .

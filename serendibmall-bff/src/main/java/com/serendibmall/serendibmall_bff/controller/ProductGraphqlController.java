@@ -3,15 +3,21 @@ package com.serendibmall.serendibmall_bff.controller;
 import com.serendibmall.inventory.v1.GetStockRequest;
 import com.serendibmall.inventory.v1.InventoryServiceGrpc;
 import com.serendibmall.inventory.v1.StockResponse;
+import com.serendibmall.product.v1.CreateProductRequest;
+import com.serendibmall.product.v1.CreateProductResponse;
 import com.serendibmall.product.v1.GetProductRequest;
 import com.serendibmall.product.v1.ProductResponse;
 import com.serendibmall.product.v1.ProductServiceGrpc;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.grpc.ManagedChannel;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.graphql.data.method.annotation.Argument;
+import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
+
+import java.util.Map;
 
 @Controller
 public class ProductGraphqlController {
