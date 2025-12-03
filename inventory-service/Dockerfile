@@ -1,12 +1,12 @@
 FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /workspace/app
 
-COPY gradle gradle
-COPY gradlew .
-COPY build.gradle.kts .
-COPY settings.gradle.kts .
-COPY src src
-COPY ../proto ../proto
+COPY inventory-service/gradle gradle
+COPY inventory-service/gradlew .
+COPY inventory-service/build.gradle.kts .
+COPY inventory-service/settings.gradle.kts .
+COPY inventory-service/src src
+COPY proto proto
 
 RUN chmod +x ./gradlew
 RUN ./gradlew bootJar -x test

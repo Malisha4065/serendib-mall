@@ -1,12 +1,12 @@
 FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /workspace/app
 
-COPY gradle gradle
-COPY gradlew .
-COPY build.gradle.kts .
-COPY settings.gradle.kts .
-COPY src src
-COPY ../proto ../proto
+COPY serendibmall-bff/gradle gradle
+COPY serendibmall-bff/gradlew .
+COPY serendibmall-bff/build.gradle.kts .
+COPY serendibmall-bff/settings.gradle.kts .
+COPY serendibmall-bff/src src
+COPY proto proto
 
 RUN chmod +x ./gradlew
 RUN ./gradlew bootJar -x test

@@ -1,12 +1,12 @@
 FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /workspace/app
 
-COPY gradle gradle
-COPY gradlew .
-COPY build.gradle.kts .
-COPY settings.gradle.kts .
-COPY src src
-COPY ../proto ../proto
+COPY product-command-service/gradle gradle
+COPY product-command-service/gradlew .
+COPY product-command-service/build.gradle.kts .
+COPY product-command-service/settings.gradle.kts .
+COPY product-command-service/src src
+COPY proto proto
 
 RUN chmod +x ./gradlew
 RUN ./gradlew bootJar -x test

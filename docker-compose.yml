@@ -93,7 +93,9 @@ services:
       - serendib-net
 
   product-command-service:
-    build: ./product-command-service
+    build:
+      context: .
+      dockerfile: ./product-command-service/Dockerfile
     container_name: product-command-service
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/product_db
@@ -109,7 +111,9 @@ services:
       - serendib-net
 
   product-query-service:
-    build: ./product-query-service
+    build:
+      context: .
+      dockerfile: ./product-query-service/Dockerfile
     container_name: product-query-service
     environment:
       - SPRING_ELASTICSEARCH_URIS=http://elasticsearch:9200
@@ -126,7 +130,9 @@ services:
       - serendib-net
 
   inventory-service:
-    build: ./inventory-service
+    build:
+      context: .
+      dockerfile: ./inventory-service/Dockerfile
     container_name: inventory-service
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/inventory_db
@@ -147,7 +153,9 @@ services:
       - serendib-net
 
   order-service:
-    build: ./order-service
+    build:
+      context: .
+      dockerfile: ./order-service/Dockerfile
     container_name: order-service
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/order_db
@@ -163,7 +171,9 @@ services:
       - serendib-net
 
   serendibmall-bff:
-    build: ./serendibmall-bff
+    build:
+      context: .
+      dockerfile: ./serendibmall-bff/Dockerfile
     container_name: serendibmall-bff
     environment:
       - SPRING_GRPC_CLIENT_CHANNELS_PRODUCT_SERVICE_ADDRESS=static://product-query-service:9090
