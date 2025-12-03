@@ -49,6 +49,7 @@ services:
       interval: 10s
       timeout: 10s
       retries: 5
+      start_period: 60s
 
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:latest
