@@ -12,6 +12,9 @@ service ProductService {
 
   // Search for products
   rpc SearchProducts (SearchProductsRequest) returns (SearchProductsResponse);
+  
+  // Create a new product
+  rpc CreateProduct (CreateProductRequest) returns (CreateProductResponse);
 }
 
 message GetProductRequest {
@@ -38,4 +41,16 @@ message SearchProductsResponse {
   repeated ProductResponse products = 1;
   int32 total_count = 2;
   int32 total_pages = 3;
+}
+
+message CreateProductRequest {
+  string name = 1;
+  string description = 2;
+  double price = 3;
+  string currency = 4;
+  string category = 5;
+}
+
+message CreateProductResponse {
+  string product_id = 1;
 }

@@ -17,4 +17,9 @@ public class GrpcClientConfig {
     public ManagedChannel inventoryServiceChannel(GrpcChannelFactory factory) {
         return factory.createChannel("inventory-service");
     }
+
+    @Bean
+    public ManagedChannel productCommandServiceChannel(GrpcChannelFactory factory) {
+        return factory.createChannel("product-command-service");
+    }
 }

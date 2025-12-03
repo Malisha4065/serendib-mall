@@ -17,12 +17,15 @@ import org.springframework.stereotype.Controller;
 public class ProductGraphqlController {
 
     private final ProductServiceGrpc.ProductServiceBlockingStub productServiceStub;
+    private final ProductServiceGrpc.ProductServiceBlockingStub productCommandServiceStub;
     private final InventoryServiceGrpc.InventoryServiceBlockingStub inventoryServiceStub;
 
     public ProductGraphqlController(
             @Qualifier("productServiceChannel") ManagedChannel productServiceChannel,
+            @Qualifier("productCommandServiceChannel") ManagedChannel productCommandServiceChannel,
             @Qualifier("inventoryServiceChannel") ManagedChannel inventoryServiceChannel) {
         this.productServiceStub = ProductServiceGrpc.newBlockingStub(productServiceChannel);
+        this.productCommandServiceStub = ProductServiceGrpc.newBlockingStub(productCommandServiceChannel);
         this.inventoryServiceStub = InventoryServiceGrpc.newBlockingStub(inventoryServiceChannel);
     }
 
@@ -51,6 +54,31 @@ public class ProductGraphqlController {
         StockResponse response = inventoryServiceStub.getStock(request);
         
         return response.getIsAvailable() ? "IN_STOCK" : "OUT_OF_STOCK";
+    }
+
+    @MutationMapping
+    @CircuitBreaker(name = "product-service", fallbackMethod = "createProductFallback")
+    public ProductDetails createProduct(@Argument Map<String, Object> input) {
+        CreateProductRequest request = CreateProductRequest.newBuilder()
+                .setName((String) input.get("name"))
+                .setDescription(input.getOrDefault("description", "").toString())
+                .setPrice(Double.parseDouble(input.get("price").toString()))
+                .setCurrency(input.getOrDefault("currency", "USD").toString())
+                .setCategory(input.getOrDefault("category", "").toString())
+                .build();
+
+        CreateProductResponse response = productCommandServiceStub.createProduct(request);
+
+        return new ProductDetails(
+                response.getProductId(),
+                (String) input.get("name"),
+                input.getOrDefault("description", "").toString(),
+                Double.parseDouble(input.get("price").toString())
+        );
+    }
+
+    private ProductDetails createProductFallback(Map<String, Object> input, Exception ex) {
+        throw new RuntimeException("Product creation failed: " + ex.getMessage(), ex);
     }
 
     public record ProductDetails(String id, String name, String description, double price) {}

@@ -98,6 +98,35 @@ services:
     networks:
       - serendib-net
 
+  debezium-connect:
+    image: quay.io/debezium/connect:2.5
+    container_name: serendib-debezium
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: redpanda:29092
+      GROUP_ID: debezium-connect-cluster
+      CONFIG_STORAGE_TOPIC: debezium_connect_configs
+      OFFSET_STORAGE_TOPIC: debezium_connect_offsets
+      STATUS_STORAGE_TOPIC: debezium_connect_status
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    networks:
+      - serendib-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   product-command-service:
     build:
       context: .
@@ -108,6 +137,7 @@ services:
       - SPRING_KAFKA_BOOTSTRAP_SERVERS=redpanda:29092
     ports:
       - "8083:8083"
+      - "9093:9093"
     depends_on:
       postgres:
         condition: service_healthy
