@@ -33,7 +33,8 @@ extra["springGrpcVersion"] = "0.12.0"
 sourceSets {
     main {
         proto {
-            srcDir("../proto") 
+            srcDir("../proto")
+            srcDir("proto")
         }
     }
 }

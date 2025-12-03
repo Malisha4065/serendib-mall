@@ -29,6 +29,15 @@ repositories {
 
 extra["springGrpcVersion"] = "0.12.0"
 
+sourceSets {
+    main {
+        proto {
+            srcDir("../proto")
+            srcDir("proto")
+        }
+    }
+}
+
 dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-data-jpa")
 	implementation("org.springframework.boot:spring-boot-starter-validation")
