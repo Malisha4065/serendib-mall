@@ -23,6 +23,16 @@ CREATE TABLE IF NOT EXISTS inventory (
     quantity INT DEFAULT 0
 );
 
+-- Outbox table for transactional messaging (Debezium CDC)
+CREATE TABLE IF NOT EXISTS inventory_outbox (
+    id VARCHAR(255) PRIMARY KEY,
+    aggregate_type VARCHAR(255) NOT NULL,
+    aggregate_id VARCHAR(255) NOT NULL,
+    event_type VARCHAR(255) NOT NULL,
+    payload TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 -- Seed inventory data for testing
 INSERT INTO inventory (id, product_id, quantity) VALUES
     ('inv-001', 'product-001', 100),
