@@ -218,12 +218,17 @@ services:
       - SPRING_GRPC_CLIENT_CHANNELS_PRODUCT_SERVICE_ADDRESS=static://product-query-service:9090
       - SPRING_GRPC_CLIENT_CHANNELS_INVENTORY_SERVICE_ADDRESS=static://inventory-service:9091
       - SPRING_GRPC_CLIENT_CHANNELS_ORDER_SERVICE_ADDRESS=static://order-service:9090
+      - SPRING_GRPC_CLIENT_CHANNELS_PRODUCT_COMMAND_SERVICE_ADDRESS=static://product-command-service:9093
     ports:
       - "8080:8080"
     depends_on:
       product-query-service:
         condition: service_started
       inventory-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      product-command-service:
         condition: service_started
     networks:
       - serendib-net
