@@ -22,12 +22,11 @@ public class ProductEventListener {
         try {
             log.info("Received event: {}", message);
 
-            // Parse Debezium CDC event
-            JsonNode event = objectMapper.readTree(message);
-            JsonNode payload = event.get("payload");
+            // Parse Debezium CDC event (Schema-less JSON)
+            JsonNode payload = objectMapper.readTree(message);
 
             if (payload == null) {
-                log.warn("No payload in event");
+                log.warn("Event is null");
                 return;
             }
 
