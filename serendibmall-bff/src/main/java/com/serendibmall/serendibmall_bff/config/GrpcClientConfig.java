@@ -22,4 +22,9 @@ public class GrpcClientConfig {
     public ManagedChannel productCommandServiceChannel(GrpcChannelFactory factory) {
         return factory.createChannel("product-command-service");
     }
+
+    @Bean
+    public ManagedChannel orderServiceChannel(GrpcChannelFactory factory) {
+        return factory.createChannel("order-service");
+    }
 }

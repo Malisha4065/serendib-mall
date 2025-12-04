@@ -21,3 +21,13 @@ type ProductDetails {
     price: Float
     stockLevel: String
 }
+
+type Order {
+    id: ID!
+    status: String
+    productId: String
+}
+
+extend type Mutation {
+    createOrder(productId: ID!, quantity: Int!): Order
+}
