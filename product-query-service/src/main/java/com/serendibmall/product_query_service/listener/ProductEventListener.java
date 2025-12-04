@@ -33,7 +33,7 @@ public class ProductEventListener {
             // Get the operation type (c = create, u = update, d = delete)
             String op = payload.has("op") ? payload.get("op").asText() : null;
             
-            if (!"c".equals(op) && !"u".equals(op)) {
+            if (!"c".equals(op) && !"u".equals(op) && !"r".equals(op)) {
                 log.info("Skipping non-create/update operation: {}", op);
                 return;
             }
