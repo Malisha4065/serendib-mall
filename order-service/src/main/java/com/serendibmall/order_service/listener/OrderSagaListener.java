@@ -56,9 +56,10 @@ public class OrderSagaListener {
             Order order = orderOptional.get();
 
             if ("InventoryReservedEvent".equals(eventType)) {
-                order.setStatus("CONFIRMED");
+                // Changed: Set to PAYMENT_PENDING instead of CONFIRMED
+                order.setStatus("PAYMENT_PENDING");
                 orderRepository.save(order);
-                log.info("Order confirmed: {}", orderId);
+                log.info("Order set to PAYMENT_PENDING: {}", orderId);
             } else if ("InventoryFailedEvent".equals(eventType)) {
                 order.setStatus("REJECTED");
                 orderRepository.save(order);
@@ -68,6 +69,46 @@ public class OrderSagaListener {
         } catch (Exception e) {
             log.error("Error processing inventory outbox event", e);
             throw new RuntimeException("Failed to process inventory event", e);
+        }
+    }
+
+    @KafkaListener(topics = "payment.events", groupId = "order-service-saga")
+    @Transactional
+    public void handlePaymentEvent(String message) {
+        try {
+            log.info("Received payment event: {}", message);
+            JsonNode event = objectMapper.readTree(message);
+
+            String orderId = event.has("orderId") ? event.get("orderId").asText() : null;
+            if (orderId == null) {
+                log.warn("Payment event missing orderId");
+                return;
+            }
+
+            Optional<Order> orderOptional = orderRepository.findById(orderId);
+            if (orderOptional.isEmpty()) {
+                log.warn("Order not found for payment event: {}", orderId);
+                return;
+            }
+
+            Order order = orderOptional.get();
+
+            // Check if this is a success or failure event based on presence of transactionId
+            if (event.has("transactionId")) {
+                // PaymentProcessedEvent - payment successful
+                order.setStatus("CONFIRMED");
+                orderRepository.save(order);
+                log.info("Order confirmed after payment: {}", orderId);
+            } else if (event.has("reason")) {
+                // PaymentFailedEvent - payment failed
+                order.setStatus("CANCELLED");
+                orderRepository.save(order);
+                log.info("Order cancelled due to payment failure: {}", orderId);
+            }
+
+        } catch (Exception e) {
+            log.error("Error processing payment event", e);
+            throw new RuntimeException("Failed to process payment event", e);
         }
     }
 }

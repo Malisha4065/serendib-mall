@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package payment.v1;
+
+option java_multiple_files = true;
+option java_package = "com.serendibmall.payment.v1";
+option java_outer_classname = "PaymentProto";
+
+// Payment Service (for future sync APIs if needed)
+service PaymentService {
+  rpc GetPayment (GetPaymentRequest) returns (PaymentResponse);
+}
+
+message GetPaymentRequest {
+  string payment_id = 1;
+}
+
+message PaymentResponse {
+  string id = 1;
+  string order_id = 2;
+  double amount = 3;
+  string status = 4;
+  string transaction_id = 5;
+}
+
+// Event messages for Kafka
+message PaymentProcessedEvent {
+  string order_id = 1;
+  string payment_id = 2;
+  string transaction_id = 3;
+}
+
+message PaymentFailedEvent {
+  string order_id = 1;
+  string reason = 2;
+}

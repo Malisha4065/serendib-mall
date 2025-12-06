@@ -41,3 +41,25 @@ INSERT INTO inventory (id, product_id, quantity) VALUES
     ('inv-004', 'product-004', 0)
 ON CONFLICT (product_id) DO NOTHING;
 
+-- Payment database setup
+CREATE DATABASE payment_db;
+
+\c payment_db;
+
+CREATE TABLE IF NOT EXISTS payments (
+    id VARCHAR(255) PRIMARY KEY,
+    order_id VARCHAR(255) NOT NULL,
+    amount DECIMAL(10,2),
+    status VARCHAR(50) NOT NULL,
+    transaction_id VARCHAR(255),
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS payment_outbox (
+    id VARCHAR(255) PRIMARY KEY,
+    aggregate_type VARCHAR(255) NOT NULL,
+    aggregate_id VARCHAR(255) NOT NULL,
+    event_type VARCHAR(255) NOT NULL,
+    payload TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

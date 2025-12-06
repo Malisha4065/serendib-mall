@@ -34,51 +34,79 @@ public class InventoryOrderListener {
             log.info("Received order event: {}", message);
             JsonNode payload = objectMapper.readTree(message);
 
-            // Debezium event structure
-            JsonNode after = payload.get("after");
             String op = payload.has("op") ? payload.get("op").asText() : "";
+            JsonNode after = payload.get("after");
+            JsonNode before = payload.get("before");
 
-            if (!"c".equals(op) || after == null) {
-                return; // Only interested in Create events
+            if (after == null) {
+                return;
             }
 
             String orderId = after.get("id").asText();
             String productId = after.get("product_id").asText();
             int quantity = after.get("quantity").asInt();
-            String status = after.get("status").asText();
+            String newStatus = after.get("status").asText();
 
-            if (!"PENDING".equals(status)) {
-                return;
+            // Handle CREATE events for stock reservation
+            if ("c".equals(op) && "PENDING".equals(newStatus)) {
+                handleStockReservation(orderId, productId, quantity);
             }
-
-            log.info("Processing order: {}, product: {}, quantity: {}", orderId, productId, quantity);
-
-            Optional<Inventory> inventoryOptional = inventoryRepository.findByProductId(productId);
-
-            if (inventoryOptional.isPresent()) {
-                Inventory inventory = inventoryOptional.get();
-                if (inventory.getQuantity() >= quantity) {
-                    // Reserve stock
-                    inventory.setQuantity(inventory.getQuantity() - quantity);
-                    inventoryRepository.save(inventory);
-                    
-                    // Write to outbox table (same transaction as inventory update)
-                    saveOutboxEvent("InventoryReservedEvent", orderId, productId, quantity);
-                    log.info("Stock reserved for order: {}", orderId);
-                } else {
-                    // Insufficient stock - write failure event to outbox
-                    saveOutboxEvent("InventoryFailedEvent", orderId, productId, quantity);
-                    log.warn("Insufficient stock for order: {}", orderId);
+            
+            // Handle UPDATE events for compensation (stock release)
+            if ("u".equals(op) && "CANCELLED".equals(newStatus)) {
+                String oldStatus = before != null && before.has("status") ? before.get("status").asText() : "";
+                if (!"CANCELLED".equals(oldStatus)) {
+                    handleCompensation(orderId, productId, quantity);
                 }
-            } else {
-                // Product not found in inventory - write failure event to outbox
-                saveOutboxEvent("InventoryFailedEvent", orderId, productId, quantity);
-                log.warn("Product not found in inventory for order: {}", orderId);
             }
 
         } catch (Exception e) {
             log.error("Error processing order event", e);
             throw new RuntimeException("Failed to process order event", e);
+        }
+    }
+
+    private void handleStockReservation(String orderId, String productId, int quantity) {
+        log.info("Processing stock reservation: order={}, product={}, quantity={}", orderId, productId, quantity);
+
+        Optional<Inventory> inventoryOptional = inventoryRepository.findByProductId(productId);
+
+        if (inventoryOptional.isPresent()) {
+            Inventory inventory = inventoryOptional.get();
+            if (inventory.getQuantity() >= quantity) {
+                // Reserve stock
+                inventory.setQuantity(inventory.getQuantity() - quantity);
+                inventoryRepository.save(inventory);
+                
+                // Write to outbox table (same transaction as inventory update)
+                saveOutboxEvent("InventoryReservedEvent", orderId, productId, quantity);
+                log.info("Stock reserved for order: {}", orderId);
+            } else {
+                // Insufficient stock - write failure event to outbox
+                saveOutboxEvent("InventoryFailedEvent", orderId, productId, quantity);
+                log.warn("Insufficient stock for order: {}", orderId);
+            }
+        } else {
+            // Product not found in inventory - write failure event to outbox
+            saveOutboxEvent("InventoryFailedEvent", orderId, productId, quantity);
+            log.warn("Product not found in inventory for order: {}", orderId);
+        }
+    }
+
+    private void handleCompensation(String orderId, String productId, int quantity) {
+        log.info("Compensation triggered: Releasing stock for order: {}", orderId);
+
+        Optional<Inventory> inventoryOptional = inventoryRepository.findByProductId(productId);
+
+        if (inventoryOptional.isPresent()) {
+            Inventory inventory = inventoryOptional.get();
+            // Release the reserved stock
+            inventory.setQuantity(inventory.getQuantity() + quantity);
+            inventoryRepository.save(inventory);
+            log.info("Compensation completed: Stock released for Order {}, returned {} units of product {}", 
+                    orderId, quantity, productId);
+        } else {
+            log.warn("Compensation: Product {} not found in inventory for order {}", productId, orderId);
         }
     }
 
