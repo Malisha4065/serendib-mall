@@ -14,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 
@@ -57,6 +59,13 @@ public class PaymentOrderListener {
             }
 
             String orderId = after.get("id").asText();
+            
+            // Idempotency check: Skip if payment already exists for this order
+            if (paymentRepository.existsByOrderId(orderId)) {
+                log.info("Payment already exists for order: {}, skipping duplicate processing", orderId);
+                return;
+            }
+            
             log.info("Processing payment for order: {}", orderId);
 
             // Simulate payment processing (80% success rate)
@@ -78,9 +87,17 @@ public class PaymentOrderListener {
             
             // Create outbox event for Debezium to pick up
             String eventType = paymentSuccessful ? "PaymentProcessedEvent" : "PaymentFailedEvent";
-            String eventPayload = paymentSuccessful 
-                    ? String.format("{\"orderId\":\"%s\",\"paymentId\":\"%s\",\"transactionId\":\"%s\"}", orderId, paymentId, transactionId)
-                    : String.format("{\"orderId\":\"%s\",\"reason\":\"Payment declined\"}", orderId);
+            
+            // Use ObjectMapper for safer JSON serialization (handles special characters)
+            Map<String, String> payloadMap = new HashMap<>();
+            payloadMap.put("orderId", orderId);
+            if (paymentSuccessful) {
+                payloadMap.put("paymentId", paymentId);
+                payloadMap.put("transactionId", transactionId);
+            } else {
+                payloadMap.put("reason", "Payment declined");
+            }
+            String eventPayload = objectMapper.writeValueAsString(payloadMap);
             
             PaymentOutbox outboxEvent = PaymentOutbox.builder()
                     .id(UUID.randomUUID().toString())
@@ -104,3 +121,4 @@ public class PaymentOrderListener {
         }
     }
 }
+
