@@ -17,12 +17,12 @@ public class ProductEventListener {
     private final ProductRepository productRepository;
     private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = "dbserver1.public.product_events", groupId = "product-query-service")
+    @KafkaListener(topics = "product.events", groupId = "product-query-service")
     public void handleProductEvent(String message) {
         try {
             log.info("Received event: {}", message);
 
-            // Parse Debezium CDC event (Schema-less JSON)
+            // SMT has already extracted the payload - single parse is enough!
             JsonNode payload = objectMapper.readTree(message);
 
             if (payload == null) {
@@ -30,43 +30,35 @@ public class ProductEventListener {
                 return;
             }
 
-            // Get the operation type (c = create, u = update, d = delete)
-            String op = payload.has("op") ? payload.get("op").asText() : null;
+            // Get the event type from the payload
+            String eventType = payload.has("event_type") ? payload.get("event_type").asText() : null;
             
-            if (!"c".equals(op) && !"u".equals(op) && !"r".equals(op)) {
-                log.info("Skipping non-create/update operation: {}", op);
-                return;
+            // Also check for "type" field for consistency with other services
+            if (eventType == null && payload.has("type")) {
+                eventType = payload.get("type").asText();
             }
-
-            // Get the after state (new row data)
-            JsonNode after = payload.get("after");
-            if (after == null) {
-                log.warn("No 'after' data in event");
-                return;
-            }
-
-            // Extract event data
-            String eventType = after.get("event_type").asText();
-            String eventPayloadStr = after.get("payload").asText();
 
             log.info("Processing event type: {}", eventType);
 
             if ("ProductCreated".equals(eventType)) {
-                // Parse the event payload
-                JsonNode eventData = objectMapper.readTree(eventPayloadStr);
+                // Extract product data directly from the clean payload
+                String productId = payload.has("product_id") ? payload.get("product_id").asText() : null;
+                
+                if (productId == null) {
+                    log.warn("ProductCreated event missing product_id");
+                    return;
+                }
 
-                // Create Elasticsearch document
                 ProductDocument productDoc = ProductDocument.builder()
-                        .id(eventData.get("product_id").asText())
-                        .name(eventData.get("name").asText())
-                        .description(eventData.has("description") ? eventData.get("description").asText() : "")
-                        .price(eventData.get("price").asDouble())
-                        .currency(eventData.has("currency") ? eventData.get("currency").asText() : "USD")
-                        .category(eventData.has("category") ? eventData.get("category").asText() : "")
+                        .id(productId)
+                        .name(payload.get("name").asText())
+                        .description(payload.has("description") ? payload.get("description").asText() : "")
+                        .price(payload.get("price").asDouble())
+                        .currency(payload.has("currency") ? payload.get("currency").asText() : "USD")
+                        .category(payload.has("category") ? payload.get("category").asText() : "")
                         .build();
 
                 productRepository.save(productDoc);
-
                 log.info("Product indexed in Elasticsearch: {}", productDoc.getId());
             }
 
@@ -75,3 +67,4 @@ public class ProductEventListener {
         }
     }
 }
+

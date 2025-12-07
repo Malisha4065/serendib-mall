@@ -27,7 +27,13 @@ curl -X POST http://localhost:8087/connectors \
       "key.converter": "org.apache.kafka.connect.json.JsonConverter",
       "value.converter": "org.apache.kafka.connect.json.JsonConverter",
       "key.converter.schemas.enable": "false",
-      "value.converter.schemas.enable": "false"
+      "value.converter.schemas.enable": "false",
+      "transforms": "outbox",
+      "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+      "transforms.outbox.table.field.event.key": "aggregate_id",
+      "transforms.outbox.table.field.event.type": "event_type",
+      "transforms.outbox.table.field.event.payload": "payload",
+      "transforms.outbox.route.topic.replacement": "product.events"
     }
   }'
 
