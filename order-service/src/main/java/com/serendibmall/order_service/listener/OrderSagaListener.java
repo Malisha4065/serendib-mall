@@ -33,8 +33,11 @@ public class OrderSagaListener {
         try {
             log.info("Received inventory event: {}", message);
             
-            // SMT has already extracted the payload - single parse is enough!
+            // SMT has already extracted the payload - check for double serialization
             JsonNode payload = objectMapper.readTree(message);
+            if (payload.isTextual()) {
+                payload = objectMapper.readTree(payload.asText());
+            }
 
             String eventType = payload.get("type").asText();
             String orderId = payload.get("orderId").asText();
@@ -73,6 +76,9 @@ public class OrderSagaListener {
         try {
             log.info("Received payment event: {}", message);
             JsonNode event = objectMapper.readTree(message);
+            if (event.isTextual()) {
+                event = objectMapper.readTree(event.asText());
+            }
 
             String orderId = event.has("orderId") ? event.get("orderId").asText() : null;
             if (orderId == null) {

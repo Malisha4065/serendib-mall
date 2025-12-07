@@ -33,7 +33,9 @@ curl -X POST http://localhost:8087/connectors \
       "transforms.outbox.table.field.event.key": "aggregate_id",
       "transforms.outbox.table.field.event.type": "event_type",
       "transforms.outbox.table.field.event.payload": "payload",
-      "transforms.outbox.route.topic.replacement": "order.events"
+      "transforms.outbox.route.by.field": "aggregate_type",
+      "transforms.outbox.route.topic.replacement": "order.events",
+      "transforms.outbox.table.fields.additional.placement": "event_type:header"
     }
   }'
 

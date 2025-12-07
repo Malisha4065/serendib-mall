@@ -1,5 +1,6 @@
 package com.serendibmall.order_service.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -19,9 +20,19 @@ import java.time.LocalDateTime;
 public class OrderOutbox {
     @Id
     private String id;
+    
+    @Column(name = "aggregate_type")
     private String aggregateType;
+    
+    @Column(name = "aggregate_id")
     private String aggregateId;
+    
+    @Column(name = "event_type")
     private String eventType;
+    
     private String payload;
+    
+    @Column(name = "created_at")
     private LocalDateTime createdAt;
 }
+

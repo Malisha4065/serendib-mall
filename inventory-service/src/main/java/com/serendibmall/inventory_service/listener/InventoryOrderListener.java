@@ -31,10 +31,18 @@ public class InventoryOrderListener {
     @Transactional
     public void handleOrderEvent(String message) {
         try {
-            log.info("Received order event: {}", message);
+            log.info("Received raw order event message: {}", message);
             
             // SMT has already extracted the payload - single parse is enough!
             JsonNode payload = objectMapper.readTree(message);
+            log.info("Parsed payload node type: {}", payload.getNodeType());
+            log.info("Parsed payload JSON: {}", payload.toPrettyString());
+            
+            if (payload.isTextual()) {
+                log.warn("Payload is TextNode, attempting double-parse");
+                payload = objectMapper.readTree(payload.asText());
+                log.info("Double-parsed payload: {}", payload.toPrettyString());
+            }
 
             String eventType = payload.get("type").asText();
             String orderId = payload.get("orderId").asText();

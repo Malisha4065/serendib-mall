@@ -35,8 +35,11 @@ public class PaymentOrderListener {
         try {
             log.info("Received order event: {}", message);
             
-            // SMT has already extracted the payload - single parse is enough!
+            // SMT has already extracted the payload - check for double serialization
             JsonNode payload = objectMapper.readTree(message);
+            if (payload.isTextual()) {
+                payload = objectMapper.readTree(payload.asText());
+            }
 
             String eventType = payload.get("type").asText();
             
