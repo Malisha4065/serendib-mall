@@ -165,6 +165,7 @@ services:
         condition: service_healthy
     networks:
       - serendib-net
+    restart: on-failure:3
 
   inventory-service:
     build:
