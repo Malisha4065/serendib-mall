@@ -26,6 +26,10 @@ public class ProductEventEntity {
     @Column(name = "aggregate_id", nullable = false)
     private UUID aggregateId;
 
+    @Column(name = "aggregate_type", nullable = false)
+    @Builder.Default
+    private String aggregateType = "Product";
+
     @Column(name = "event_type", nullable = false, length = 100)
     private String eventType;
 

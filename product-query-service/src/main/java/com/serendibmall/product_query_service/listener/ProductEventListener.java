@@ -8,17 +8,25 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
+import org.springframework.kafka.support.KafkaHeaders;
+import org.springframework.messaging.handler.annotation.Header;
+
 
 @Component
 @Slf4j
-@RequiredArgsConstructor
 public class ProductEventListener {
+
+    public ProductEventListener(ProductRepository productRepository, ObjectMapper objectMapper) {
+        this.productRepository = productRepository;
+        this.objectMapper = objectMapper;
+        log.info("ProductEventListener initialized! Ready to consume events.");
+    }
 
     private final ProductRepository productRepository;
     private final ObjectMapper objectMapper;
 
     @KafkaListener(topics = "product.events", groupId = "product-query-service")
-    public void handleProductEvent(String message) {
+    public void handleProductEvent(String message, @Header(value = "event_type", required = false) String eventTypeHeader) {
         try {
             log.info("Received event: {}", message);
 
@@ -39,6 +47,11 @@ public class ProductEventListener {
             // Also check for "type" field for consistency with other services
             if (eventType == null && payload.has("type")) {
                 eventType = payload.get("type").asText();
+            }
+
+            // Fallback to header
+            if (eventType == null) {
+                eventType = eventTypeHeader;
             }
 
             log.info("Processing event type: {}", eventType);
