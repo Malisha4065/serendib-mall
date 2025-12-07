@@ -20,27 +20,14 @@ public class OrderSagaListener {
     private final OrderRepository orderRepository;
     private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = "dbserver1.public.inventory_outbox", groupId = "order-service-saga")
+    @KafkaListener(topics = "inventory.events", groupId = "order-service-saga")
     @Transactional
     public void handleInventoryOutboxEvent(String message) {
         try {
-            log.info("Received inventory outbox event: {}", message);
-            JsonNode debeziumEvent = objectMapper.readTree(message);
-
-            // Only process create events from Debezium
-            String op = debeziumEvent.has("op") ? debeziumEvent.get("op").asText() : "";
-            if (!"c".equals(op)) {
-                return;
-            }
-
-            JsonNode after = debeziumEvent.get("after");
-            if (after == null) {
-                return;
-            }
-
-            // Extract the payload from the outbox event
-            String payloadStr = after.get("payload").asText();
-            JsonNode payload = objectMapper.readTree(payloadStr);
+            log.info("Received inventory event: {}", message);
+            
+            // SMT has already extracted the payload - single parse is enough!
+            JsonNode payload = objectMapper.readTree(message);
 
             String eventType = payload.get("type").asText();
             String orderId = payload.get("orderId").asText();
@@ -67,7 +54,7 @@ public class OrderSagaListener {
             }
 
         } catch (Exception e) {
-            log.error("Error processing inventory outbox event", e);
+            log.error("Error processing inventory event", e);
             throw new RuntimeException("Failed to process inventory event", e);
         }
     }
