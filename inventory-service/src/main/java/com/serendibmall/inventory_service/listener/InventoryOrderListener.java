@@ -27,37 +27,28 @@ public class InventoryOrderListener {
     private final InventoryOutboxRepository outboxRepository;
     private final ObjectMapper objectMapper;
 
-    @KafkaListener(topics = "dbserver1.public.orders", groupId = "inventory-service-saga")
+    @KafkaListener(topics = "order.events", groupId = "inventory-service-saga")
     @Transactional
     public void handleOrderEvent(String message) {
         try {
             log.info("Received order event: {}", message);
+            
+            // SMT has already extracted the payload - single parse is enough!
             JsonNode payload = objectMapper.readTree(message);
 
-            String op = payload.has("op") ? payload.get("op").asText() : "";
-            JsonNode after = payload.get("after");
-            JsonNode before = payload.get("before");
+            String eventType = payload.get("type").asText();
+            String orderId = payload.get("orderId").asText();
+            String productId = payload.get("productId").asText();
+            int quantity = payload.get("quantity").asInt();
 
-            if (after == null) {
-                return;
-            }
-
-            String orderId = after.get("id").asText();
-            String productId = after.get("product_id").asText();
-            int quantity = after.get("quantity").asInt();
-            String newStatus = after.get("status").asText();
-
-            // Handle CREATE events for stock reservation
-            if ("c".equals(op) && "PENDING".equals(newStatus)) {
+            // Handle OrderCreatedEvent for stock reservation
+            if ("OrderCreatedEvent".equals(eventType)) {
                 handleStockReservation(orderId, productId, quantity);
             }
             
-            // Handle UPDATE events for compensation (stock release)
-            if ("u".equals(op) && "CANCELLED".equals(newStatus)) {
-                String oldStatus = before != null && before.has("status") ? before.get("status").asText() : "";
-                if (!"CANCELLED".equals(oldStatus)) {
-                    handleCompensation(orderId, productId, quantity);
-                }
+            // Handle OrderCancelledEvent for compensation (stock release)
+            if ("OrderCancelledEvent".equals(eventType)) {
+                handleCompensation(orderId, productId, quantity);
             }
 
         } catch (Exception e) {
@@ -137,3 +128,4 @@ public class InventoryOrderListener {
         }
     }
 }
+

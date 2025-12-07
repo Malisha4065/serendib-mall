@@ -3,6 +3,8 @@ package com.serendibmall.order_service.listener;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.serendibmall.order_service.entity.Order;
+import com.serendibmall.order_service.entity.OrderOutbox;
+import com.serendibmall.order_service.repository.OrderOutboxRepository;
 import com.serendibmall.order_service.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,7 +12,11 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 @Component
 @Slf4j
@@ -18,6 +24,7 @@ import java.util.Optional;
 public class OrderSagaListener {
 
     private final OrderRepository orderRepository;
+    private final OrderOutboxRepository outboxRepository;
     private final ObjectMapper objectMapper;
 
     @KafkaListener(topics = "inventory.events", groupId = "order-service-saga")
@@ -43,13 +50,14 @@ public class OrderSagaListener {
             Order order = orderOptional.get();
 
             if ("InventoryReservedEvent".equals(eventType)) {
-                // Changed: Set to PAYMENT_PENDING instead of CONFIRMED
                 order.setStatus("PAYMENT_PENDING");
                 orderRepository.save(order);
+                saveOutboxEvent("OrderPaymentPendingEvent", order);
                 log.info("Order set to PAYMENT_PENDING: {}", orderId);
             } else if ("InventoryFailedEvent".equals(eventType)) {
                 order.setStatus("REJECTED");
                 orderRepository.save(order);
+                saveOutboxEvent("OrderRejectedEvent", order);
                 log.info("Order rejected: {}", orderId);
             }
 
@@ -85,11 +93,13 @@ public class OrderSagaListener {
                 // PaymentProcessedEvent - payment successful
                 order.setStatus("CONFIRMED");
                 orderRepository.save(order);
+                saveOutboxEvent("OrderConfirmedEvent", order);
                 log.info("Order confirmed after payment: {}", orderId);
             } else if (event.has("reason")) {
                 // PaymentFailedEvent - payment failed
                 order.setStatus("CANCELLED");
                 orderRepository.save(order);
+                saveOutboxEvent("OrderCancelledEvent", order);
                 log.info("Order cancelled due to payment failure: {}", orderId);
             }
 
@@ -98,4 +108,34 @@ public class OrderSagaListener {
             throw new RuntimeException("Failed to process payment event", e);
         }
     }
+
+    private void saveOutboxEvent(String eventType, Order order) {
+        try {
+            Map<String, Object> payloadMap = new HashMap<>();
+            payloadMap.put("type", eventType);
+            payloadMap.put("orderId", order.getId());
+            payloadMap.put("productId", order.getProductId());
+            payloadMap.put("userId", order.getUserId());
+            payloadMap.put("quantity", order.getQuantity());
+            payloadMap.put("status", order.getStatus());
+
+            String payloadJson = objectMapper.writeValueAsString(payloadMap);
+
+            OrderOutbox outboxEvent = OrderOutbox.builder()
+                    .id(UUID.randomUUID().toString())
+                    .aggregateType("Order")
+                    .aggregateId(order.getId())
+                    .eventType(eventType)
+                    .payload(payloadJson)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            outboxRepository.save(outboxEvent);
+            log.info("Outbox event saved: {} for order: {}", eventType, order.getId());
+        } catch (Exception e) {
+            log.error("Error saving outbox event", e);
+            throw new RuntimeException("Failed to save outbox event", e);
+        }
+    }
 }
+

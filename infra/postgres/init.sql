@@ -14,6 +14,16 @@ CREATE TABLE IF NOT EXISTS orders (
     created_at TIMESTAMP
 );
 
+-- Outbox table for transactional messaging (Debezium CDC)
+CREATE TABLE IF NOT EXISTS order_outbox (
+    id VARCHAR(255) PRIMARY KEY,
+    aggregate_type VARCHAR(255) NOT NULL,
+    aggregate_id VARCHAR(255) NOT NULL,
+    event_type VARCHAR(255) NOT NULL,
+    payload TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 -- Inventory database setup
 \c inventory_db;
 
