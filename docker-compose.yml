@@ -252,6 +252,19 @@ services:
     networks:
       - serendib-net
 
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: serendib-zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - serendib-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9411/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 networks:
   serendib-net:
     driver: bridge
