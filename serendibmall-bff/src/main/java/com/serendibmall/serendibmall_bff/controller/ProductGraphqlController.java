@@ -36,6 +36,7 @@ public class ProductGraphqlController {
     }
 
     @QueryMapping
+    @CircuitBreaker(name = "product-service", fallbackMethod = "productFallback")
     public ProductDetails product(@Argument String id) {
         GetProductRequest request = GetProductRequest.newBuilder()
                 .setProductId(id)
@@ -51,7 +52,13 @@ public class ProductGraphqlController {
         );
     }
 
+    private ProductDetails productFallback(String id, Exception ex) {
+        // Return a placeholder when product service is unavailable
+        return new ProductDetails(id, "Service Unavailable", "Please try again later", 0.0);
+    }
+
     @SchemaMapping(typeName = "ProductDetails")
+    @CircuitBreaker(name = "inventory-service", fallbackMethod = "stockLevelFallback")
     public String stockLevel(ProductDetails product) {
         GetStockRequest request = GetStockRequest.newBuilder()
                 .setProductId(product.id())
@@ -60,6 +67,10 @@ public class ProductGraphqlController {
         StockResponse response = inventoryServiceStub.getStock(request);
         
         return response.getIsAvailable() ? "IN_STOCK" : "OUT_OF_STOCK";
+    }
+
+    private String stockLevelFallback(ProductDetails product, Exception ex) {
+        return "UNKNOWN";
     }
 
     @MutationMapping
