@@ -266,6 +266,22 @@ services:
       timeout: 5s
       retries: 5
 
+  # Frontend
+  serendibmall-frontend:
+    build: ./serendibmall-frontend
+    container_name: serendib-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - serendibmall-bff
+    networks:
+      - serendib-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 networks:
   serendib-net:
     driver: bridge
