@@ -1,0 +1,65 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: serendibmall-bff
+  namespace: serendibmall
+  labels:
+    app: serendibmall-bff
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: serendibmall-bff
+  template:
+    metadata:
+      labels:
+        app: serendibmall-bff
+    spec:
+      containers:
+        - name: bff
+          image: ghcr.io/OWNER/serendibmall/serendibmall-bff:latest
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: SPRING_GRPC_CLIENT_CHANNELS_PRODUCT_SERVICE_ADDRESS
+              value: "static://product-query-service.serendibmall.svc.cluster.local:9090"
+            - name: SPRING_GRPC_CLIENT_CHANNELS_INVENTORY_SERVICE_ADDRESS
+              value: "static://inventory-service.serendibmall.svc.cluster.local:9091"
+            - name: SPRING_GRPC_CLIENT_CHANNELS_ORDER_SERVICE_ADDRESS
+              value: "static://order-service.serendibmall.svc.cluster.local:9090"
+            - name: SPRING_GRPC_CLIENT_CHANNELS_PRODUCT_COMMAND_SERVICE_ADDRESS
+              value: "static://product-command-service.serendibmall.svc.cluster.local:9093"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 5
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: serendibmall-bff
+  namespace: serendibmall
+spec:
+  selector:
+    app: serendibmall-bff
+  ports:
+    - port: 80
+      targetPort: 8080
+      name: http
+  type: ClusterIP

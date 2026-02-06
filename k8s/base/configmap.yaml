@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: common-config
+  namespace: serendibmall
+data:
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: "redpanda.serendibmall.svc.cluster.local:29092"
+  SPRING_DATASOURCE_USERNAME: "postgres"
+  SPRING_ELASTICSEARCH_URIS: "http://elasticsearch.serendibmall.svc.cluster.local:9200"
+  SPRING_DATA_REDIS_HOST: "redis.serendibmall.svc.cluster.local"
+  SPRING_DATA_REDIS_PORT: "6379"
