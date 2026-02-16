@@ -1,0 +1,283 @@
+# Docker Compose for running with pre-built images from GitHub Container Registry.
+# 
+# Usage:
+#   1. Login to GHCR:  docker login ghcr.io -u <your-github-username>
+#   2. Run:            docker compose -f docker-compose.ghcr.yml up -d
+#   3. Stop:           docker compose -f docker-compose.ghcr.yml down
+#
+# To use a specific version, set IMAGE_TAG: IMAGE_TAG=develop docker compose -f docker-compose.ghcr.yml up -d
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: serendib-postgres
+    command: ["postgres", "-c", "wal_level=logical"]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - serendib-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: serendib-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - serendib-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
+    container_name: serendib-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    networks:
+      - serendib-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s >/dev/null || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 180s
+
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    container_name: serendib-redpanda
+    command:
+      - redpanda start
+      - --smp 1
+      - --memory 1G
+      - --reserve-memory 0M
+      - --overprovisioned
+      - --node-id 0
+      - --check=false
+      - --kafka-addr PLAINTEXT://0.0.0.0:29092,OUTSIDE://0.0.0.0:9092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:29092,OUTSIDE://localhost:9092
+      - --pandaproxy-addr 0.0.0.0:8082
+      - --advertise-pandaproxy-addr localhost:8082
+    ports:
+      - "9092:9092"
+      - "8082:8082"
+    volumes:
+      - redpanda_data:/var/lib/redpanda/data
+    networks:
+      - serendib-net
+    healthcheck:
+      test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.*true' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 60s
+    ulimits:
+      memlock: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+
+  redpanda-console:
+    image: docker.redpanda.com/redpandadata/console:latest
+    container_name: serendib-redpanda-console
+    environment:
+      KAFKA_BROKERS: redpanda:29092
+    ports:
+      - "8088:8080"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    networks:
+      - serendib-net
+
+  debezium-connect:
+    image: quay.io/debezium/connect:2.5
+    container_name: serendib-debezium
+    ports:
+      - "8087:8083"
+    environment:
+      BOOTSTRAP_SERVERS: redpanda:29092
+      GROUP_ID: debezium-connect-cluster
+      CONFIG_STORAGE_TOPIC: debezium_connect_configs
+      OFFSET_STORAGE_TOPIC: debezium_connect_offsets
+      STATUS_STORAGE_TOPIC: debezium_connect_status
+      KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
+      CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    networks:
+      - serendib-net
+    restart: on-failure:5
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # =============================================
+  # Application Services (pre-built from GHCR)
+  # =============================================
+
+  product-command-service:
+    image: ghcr.io/malisha4065/serendibmall/product-command-service:${IMAGE_TAG:-main}
+    container_name: product-command-service
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/product_db
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=redpanda:29092
+    ports:
+      - "8083:8083"
+      - "9093:9093"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    networks:
+      - serendib-net
+
+  product-query-service:
+    image: ghcr.io/malisha4065/serendibmall/product-query-service:${IMAGE_TAG:-main}
+    container_name: product-query-service
+    environment:
+      - SPRING_ELASTICSEARCH_URIS=http://elasticsearch:9200
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=redpanda:29092
+    ports:
+      - "8086:8081"
+      - "9090:9090"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    networks:
+      - serendib-net
+    restart: on-failure:3
+
+  inventory-service:
+    image: ghcr.io/malisha4065/serendibmall/inventory-service:${IMAGE_TAG:-main}
+    container_name: inventory-service
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/inventory_db
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=redpanda:29092
+    ports:
+      - "8085:8085"
+      - "9091:9091"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    networks:
+      - serendib-net
+
+  order-service:
+    image: ghcr.io/malisha4065/serendibmall/order-service:${IMAGE_TAG:-main}
+    container_name: order-service
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/order_db
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=redpanda:29092
+      - JAVA_TOOL_OPTIONS=-Djava.net.preferIPv4Stack=true
+    ports:
+      - "8084:8084"
+      - "9094:9090"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    networks:
+      - serendib-net
+
+  payment-service:
+    image: ghcr.io/malisha4065/serendibmall/payment-service:${IMAGE_TAG:-main}
+    container_name: payment-service
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/payment_db
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=redpanda:29092
+    ports:
+      - "8089:8089"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+    networks:
+      - serendib-net
+
+  serendibmall-bff:
+    image: ghcr.io/malisha4065/serendibmall/serendibmall-bff:${IMAGE_TAG:-main}
+    container_name: serendibmall-bff
+    environment:
+      - SPRING_GRPC_CLIENT_CHANNELS_PRODUCT_SERVICE_ADDRESS=static://product-query-service:9090
+      - SPRING_GRPC_CLIENT_CHANNELS_INVENTORY_SERVICE_ADDRESS=static://inventory-service:9091
+      - SPRING_GRPC_CLIENT_CHANNELS_ORDER_SERVICE_ADDRESS=static://order-service:9090
+      - SPRING_GRPC_CLIENT_CHANNELS_PRODUCT_COMMAND_SERVICE_ADDRESS=static://product-command-service:9093
+    ports:
+      - "8080:8080"
+    depends_on:
+      product-query-service:
+        condition: service_started
+      inventory-service:
+        condition: service_started
+      order-service:
+        condition: service_started
+      product-command-service:
+        condition: service_started
+    networks:
+      - serendib-net
+
+  # Frontend (still built locally since it's not in CI yet)
+  serendibmall-frontend:
+    build: ./serendibmall-frontend
+    container_name: serendib-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - serendibmall-bff
+    networks:
+      - serendib-net
+
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: serendib-zipkin
+    ports:
+      - "9411:9411"
+    networks:
+      - serendib-net
+
+networks:
+  serendib-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  es_data:
+  redpanda_data:
