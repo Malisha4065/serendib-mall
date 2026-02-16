@@ -254,9 +254,8 @@ services:
     networks:
       - serendib-net
 
-  # Frontend (still built locally since it's not in CI yet)
   serendibmall-frontend:
-    build: ./serendibmall-frontend
+    image: ghcr.io/malisha4065/serendibmall/serendibmall-frontend:${IMAGE_TAG:-main}
     container_name: serendib-frontend
     ports:
       - "3000:80"
