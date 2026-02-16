@@ -61,6 +61,19 @@ services:
       retries: 10
       start_period: 180s
 
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.1
+    container_name: serendib-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - serendib-net
+
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:latest
     container_name: serendib-redpanda
