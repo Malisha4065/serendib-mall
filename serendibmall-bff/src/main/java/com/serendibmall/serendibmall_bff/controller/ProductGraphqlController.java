@@ -8,6 +8,8 @@ import com.serendibmall.product.v1.CreateProductResponse;
 import com.serendibmall.product.v1.GetProductRequest;
 import com.serendibmall.product.v1.ProductResponse;
 import com.serendibmall.product.v1.ProductServiceGrpc;
+import com.serendibmall.product.v1.SearchProductsRequest;
+import com.serendibmall.product.v1.SearchProductsResponse;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.grpc.ManagedChannel;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -17,7 +19,10 @@ import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 public class ProductGraphqlController {
@@ -48,13 +53,42 @@ public class ProductGraphqlController {
                 response.getId(),
                 response.getName(),
                 response.getDescription(),
-                response.getPrice()
+                response.getPrice(),
+                response.getCurrency(),
+                response.getCategory()
         );
     }
 
     private ProductDetails productFallback(String id, Exception ex) {
-        // Return a placeholder when product service is unavailable
-        return new ProductDetails(id, "Service Unavailable", "Please try again later", 0.0);
+        return new ProductDetails(id, "Service Unavailable", "Please try again later", 0.0, "USD", "");
+    }
+
+    @QueryMapping
+    @CircuitBreaker(name = "product-service", fallbackMethod = "productsFallback")
+    public ProductSearchResult products(@Argument String query, @Argument Integer page, @Argument Integer size) {
+        SearchProductsRequest.Builder requestBuilder = SearchProductsRequest.newBuilder();
+        
+        if (query != null) requestBuilder.setQuery(query);
+        requestBuilder.setPage(page != null ? page : 0);
+        requestBuilder.setSize(size != null ? size : 20);
+
+        SearchProductsResponse response = productServiceStub.searchProducts(requestBuilder.build());
+
+        List<ProductDetails> productList = response.getProductsList().stream()
+                .map(p -> new ProductDetails(
+                        p.getId(),
+                        p.getName(),
+                        p.getDescription(),
+                        p.getPrice(),
+                        p.getCurrency(),
+                        p.getCategory()))
+                .collect(Collectors.toList());
+
+        return new ProductSearchResult(productList, response.getTotalCount(), response.getTotalPages());
+    }
+
+    private ProductSearchResult productsFallback(String query, Integer page, Integer size, Exception ex) {
+        return new ProductSearchResult(Collections.emptyList(), 0, 0);
     }
 
     @SchemaMapping(typeName = "ProductDetails")
@@ -90,7 +124,9 @@ public class ProductGraphqlController {
                 response.getProductId(),
                 (String) input.get("name"),
                 input.getOrDefault("description", "").toString(),
-                Double.parseDouble(input.get("price").toString())
+                Double.parseDouble(input.get("price").toString()),
+                input.getOrDefault("currency", "USD").toString(),
+                input.getOrDefault("category", "").toString()
         );
     }
 
@@ -98,5 +134,6 @@ public class ProductGraphqlController {
         throw new RuntimeException("Product creation failed: " + ex.getMessage(), ex);
     }
 
-    public record ProductDetails(String id, String name, String description, double price) {}
+    public record ProductDetails(String id, String name, String description, double price, String currency, String category) {}
+    public record ProductSearchResult(List<ProductDetails> products, int totalCount, int totalPages) {}
 }
