@@ -88,5 +88,20 @@
                 "user"
             ]
         }
+    ],
+    "identityProviders": [
+        {
+            "alias": "google",
+            "providerId": "google",
+            "enabled": true,
+            "trustEmail": true,
+            "firstBrokerLoginFlowAlias": "first broker login",
+            "config": {
+                "clientId": "${GOOGLE_CLIENT_ID}",
+                "clientSecret": "${GOOGLE_CLIENT_SECRET}",
+                "defaultScope": "openid email profile",
+                "syncMode": "IMPORT"
+            }
+        }
     ]
 }

@@ -273,7 +273,10 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.2
     container_name: serendib-keycloak
+    entrypoint: /opt/keycloak/custom-entrypoint.sh
     command: start-dev --import-realm --health-enabled=true
+    env_file:
+      - .env
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
@@ -281,7 +284,8 @@ services:
     ports:
       - "9080:8080"
     volumes:
-      - ./infra/keycloak/serendibmall-realm.json:/opt/keycloak/data/import/serendibmall-realm.json:ro
+      - ./infra/keycloak/docker-entrypoint.sh:/opt/keycloak/custom-entrypoint.sh:ro
+      - ./infra/keycloak/serendibmall-realm.json:/opt/keycloak/data/import-template/serendibmall-realm.json:ro
       - keycloak_data:/opt/keycloak/data
     networks:
       - serendib-net
