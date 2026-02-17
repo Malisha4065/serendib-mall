@@ -1,0 +1,92 @@
+{
+    "realm": "serendibmall",
+    "enabled": true,
+    "sslRequired": "none",
+    "registrationAllowed": true,
+    "registrationEmailAsUsername": false,
+    "loginWithEmailAllowed": true,
+    "duplicateEmailsAllowed": false,
+    "resetPasswordAllowed": true,
+    "editUsernameAllowed": false,
+    "bruteForceProtected": true,
+    "roles": {
+        "realm": [
+            {
+                "name": "user",
+                "description": "Regular customer",
+                "composite": false
+            },
+            {
+                "name": "admin",
+                "description": "Store administrator",
+                "composite": false
+            }
+        ]
+    },
+    "defaultRoles": [
+        "user"
+    ],
+    "clients": [
+        {
+            "clientId": "serendibmall-frontend",
+            "name": "SerendibMall Frontend",
+            "enabled": true,
+            "publicClient": true,
+            "directAccessGrantsEnabled": true,
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "redirectUris": [
+                "http://localhost:3000/*",
+                "http://localhost:5173/*"
+            ],
+            "webOrigins": [
+                "http://localhost:3000",
+                "http://localhost:5173"
+            ],
+            "protocol": "openid-connect",
+            "attributes": {
+                "pkce.code.challenge.method": "S256",
+                "post.logout.redirect.uris": "http://localhost:3000/*##http://localhost:5173/*"
+            }
+        }
+    ],
+    "users": [
+        {
+            "username": "admin",
+            "email": "admin@serendibmall.com",
+            "firstName": "Store",
+            "lastName": "Admin",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "admin123",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "user",
+                "admin"
+            ]
+        },
+        {
+            "username": "customer",
+            "email": "customer@serendibmall.com",
+            "firstName": "Test",
+            "lastName": "Customer",
+            "enabled": true,
+            "emailVerified": true,
+            "credentials": [
+                {
+                    "type": "password",
+                    "value": "customer123",
+                    "temporary": false
+                }
+            ],
+            "realmRoles": [
+                "user"
+            ]
+        }
+    ]
+}

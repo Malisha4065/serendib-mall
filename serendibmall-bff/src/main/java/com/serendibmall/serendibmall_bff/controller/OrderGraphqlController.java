@@ -4,12 +4,17 @@ import com.serendibmall.order.v1.CreateOrderRequest;
 import com.serendibmall.order.v1.CreateOrderResponse;
 import com.serendibmall.order.v1.OrderServiceGrpc;
 import io.grpc.ManagedChannel;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Controller;
 
 @Controller
+@Slf4j
 public class OrderGraphqlController {
 
     private final OrderServiceGrpc.OrderServiceBlockingStub orderServiceStub;
@@ -19,9 +24,12 @@ public class OrderGraphqlController {
     }
 
     @MutationMapping
-    public Order createOrder(@Argument String productId, @Argument Integer quantity) {
-        // Hardcoded userId for now as per instructions
-        String userId = "user-123";
+    @PreAuthorize("isAuthenticated()")
+    public Order createOrder(@Argument String productId, @Argument Integer quantity,
+                             @AuthenticationPrincipal Jwt jwt) {
+        String userId = jwt.getSubject();
+        String username = jwt.getClaimAsString("preferred_username");
+        log.info("Creating order for user {} ({}): product={}, qty={}", username, userId, productId, quantity);
 
         CreateOrderRequest request = CreateOrderRequest.newBuilder()
                 .setUserId(userId)

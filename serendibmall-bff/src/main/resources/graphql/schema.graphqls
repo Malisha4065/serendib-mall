@@ -2,6 +2,7 @@ type Query {
     product(id: ID!): ProductDetails
     products(query: String, page: Int, size: Int): ProductSearchResult
     inventory(page: Int, size: Int): InventoryPage
+    me: UserInfo
 }
 
 type Mutation {
@@ -55,4 +56,13 @@ type InventoryItem {
 type InventoryPage {
     items: [InventoryItem!]!
     totalCount: Int!
+}
+
+type UserInfo {
+    id: ID!
+    username: String!
+    email: String
+    firstName: String
+    lastName: String
+    roles: [String!]!
 }

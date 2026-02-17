@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 
 import java.util.ArrayList;
@@ -34,6 +35,7 @@ public class InventoryGraphqlController {
     }
 
     @QueryMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public InventoryPage inventory(@Argument Integer page, @Argument Integer size) {
         int pageNum = page != null ? page : 0;
         int pageSize = size != null ? size : 20;
@@ -64,6 +66,7 @@ public class InventoryGraphqlController {
     }
 
     @MutationMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public InventoryItem setStock(@Argument String productId, @Argument Integer quantity) {
         log.info("Setting stock for product {}: {}", productId, quantity);
 
@@ -83,6 +86,7 @@ public class InventoryGraphqlController {
     }
 
     @MutationMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public InventoryItem updateStock(@Argument String productId, @Argument Integer delta) {
         log.info("Updating stock for product {} by delta: {}", productId, delta);
 
