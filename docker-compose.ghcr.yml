@@ -306,7 +306,7 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:26.2
     container_name: serendib-keycloak
-    command: start-dev --import-realm
+    command: start-dev --import-realm --health-enabled=true
     environment:
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
@@ -319,11 +319,11 @@ services:
     networks:
       - serendib-net
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080; echo -e 'GET /health/ready HTTP/1.1\r\nhost: localhost\r\n\r\n' >&3; timeout 1 cat <&3 | grep -q '200'"]
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/localhost/9000"]
       interval: 10s
       timeout: 5s
-      retries: 15
-      start_period: 30s
+      retries: 20
+      start_period: 40s
 
   zipkin:
     image: openzipkin/zipkin:latest
