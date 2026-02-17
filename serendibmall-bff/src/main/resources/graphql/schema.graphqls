@@ -1,6 +1,7 @@
 type Query {
     product(id: ID!): ProductDetails
     products(query: String, page: Int, size: Int): ProductSearchResult
+    inventory(page: Int, size: Int): InventoryPage
 }
 
 type Mutation {
@@ -13,6 +14,7 @@ input CreateProductInput {
     price: Float!
     currency: String
     category: String
+    initialStock: Int
 }
 
 type ProductDetails {
@@ -39,4 +41,18 @@ type Order {
 
 extend type Mutation {
     createOrder(productId: ID!, quantity: Int!): Order
+    setStock(productId: ID!, quantity: Int!): InventoryItem
+    updateStock(productId: ID!, delta: Int!): InventoryItem
+}
+
+type InventoryItem {
+    productId: ID!
+    productName: String
+    quantity: Int!
+    isAvailable: Boolean!
+}
+
+type InventoryPage {
+    items: [InventoryItem!]!
+    totalCount: Int!
 }

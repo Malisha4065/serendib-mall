@@ -30,3 +30,17 @@ export const SEARCH_PRODUCTS = gql`
     }
   }
 `
+
+export const GET_INVENTORY = gql`
+  query GetInventory($page: Int, $size: Int) {
+    inventory(page: $page, size: $size) {
+      items {
+        productId
+        productName
+        quantity
+        isAvailable
+      }
+      totalCount
+    }
+  }
+`

@@ -2,13 +2,15 @@
 import { ref, reactive } from 'vue'
 import { useMutation } from '@vue/apollo-composable'
 import { CREATE_PRODUCT } from '../graphql/mutations'
+import { RouterLink } from 'vue-router'
 
 const form = reactive({
   name: '',
   description: '',
   price: 0,
   currency: 'USD',
-  category: ''
+  category: '',
+  initialStock: 0
 })
 
 const successMessage = ref<string | null>(null)
@@ -21,23 +23,29 @@ const handleSubmit = async () => {
   errorMessage.value = null
 
   try {
-    const response = await createProduct({
-      input: {
-        name: form.name,
-        description: form.description,
-        price: form.price,
-        currency: form.currency,
-        category: form.category
-      }
-    })
+    const input: Record<string, any> = {
+      name: form.name,
+      description: form.description,
+      price: form.price,
+      currency: form.currency,
+      category: form.category
+    }
+
+    if (form.initialStock > 0) {
+      input.initialStock = form.initialStock
+    }
+
+    const response = await createProduct({ input })
 
     if (response?.data?.createProduct) {
-      successMessage.value = `Product "${response.data.createProduct.name}" created with ID: ${response.data.createProduct.id}`
+      const stockInfo = form.initialStock > 0 ? ` with ${form.initialStock} units in stock` : ''
+      successMessage.value = `Product "${response.data.createProduct.name}" created${stockInfo} (ID: ${response.data.createProduct.id})`
       // Reset form
       form.name = ''
       form.description = ''
       form.price = 0
       form.category = ''
+      form.initialStock = 0
     }
   } catch (e: any) {
     errorMessage.value = e.message || 'Failed to create product'
@@ -47,8 +55,21 @@ const handleSubmit = async () => {
 
 <template>
   <div class="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-    <h1 class="text-4xl font-bold text-white mb-2">Admin Panel</h1>
-    <p class="text-gray-400 mb-8">Create and manage products</p>
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-4xl font-bold text-white mb-2">Admin Panel</h1>
+        <p class="text-gray-400">Create and manage products</p>
+      </div>
+      <RouterLink
+        to="/admin/inventory"
+        class="bg-white/5 hover:bg-white/10 border border-white/10 text-white px-5 py-3 rounded-xl font-medium transition-all flex items-center gap-2"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+        Manage Inventory
+      </RouterLink>
+    </div>
 
     <!-- Create Product Form -->
     <div class="bg-white/5 backdrop-blur-lg rounded-2xl border border-white/10 p-8">
@@ -76,7 +97,7 @@ const handleSubmit = async () => {
           ></textarea>
         </div>
 
-        <div class="grid grid-cols-2 gap-6">
+        <div class="grid grid-cols-3 gap-6">
           <div>
             <label class="block text-gray-400 mb-2 font-medium">Price *</label>
             <div class="relative">
@@ -105,6 +126,18 @@ const handleSubmit = async () => {
               <option value="Wearables" class="bg-slate-800">Wearables</option>
               <option value="Audio" class="bg-slate-800">Audio</option>
             </select>
+          </div>
+
+          <div>
+            <label class="block text-gray-400 mb-2 font-medium">Initial Stock</label>
+            <input
+              v-model.number="form.initialStock"
+              type="number"
+              min="0"
+              class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-violet-500 transition-colors"
+              placeholder="0"
+            />
+            <p class="text-xs text-gray-500 mt-1">Leave at 0 to set stock later</p>
           </div>
         </div>
 

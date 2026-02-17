@@ -2,6 +2,7 @@ package com.serendibmall.serendibmall_bff.controller;
 
 import com.serendibmall.inventory.v1.GetStockRequest;
 import com.serendibmall.inventory.v1.InventoryServiceGrpc;
+import com.serendibmall.inventory.v1.SetStockRequest;
 import com.serendibmall.inventory.v1.StockResponse;
 import com.serendibmall.product.v1.CreateProductRequest;
 import com.serendibmall.product.v1.CreateProductResponse;
@@ -12,6 +13,7 @@ import com.serendibmall.product.v1.SearchProductsRequest;
 import com.serendibmall.product.v1.SearchProductsResponse;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.grpc.ManagedChannel;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -25,6 +27,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Controller
+@Slf4j
 public class ProductGraphqlController {
 
     private final ProductServiceGrpc.ProductServiceBlockingStub productServiceStub;
@@ -120,8 +123,28 @@ public class ProductGraphqlController {
 
         CreateProductResponse response = productCommandServiceStub.createProduct(request);
 
+        String productId = response.getProductId();
+
+        // Set initial stock if provided
+        Object initialStockObj = input.get("initialStock");
+        if (initialStockObj != null) {
+            int initialStock = Integer.parseInt(initialStockObj.toString());
+            if (initialStock > 0) {
+                try {
+                    inventoryServiceStub.setStock(
+                            SetStockRequest.newBuilder()
+                                    .setProductId(productId)
+                                    .setQuantity(initialStock)
+                                    .build());
+                    log.info("Set initial stock for product {}: {}", productId, initialStock);
+                } catch (Exception e) {
+                    log.warn("Failed to set initial stock for product {}: {}", productId, e.getMessage());
+                }
+            }
+        }
+
         return new ProductDetails(
-                response.getProductId(),
+                productId,
                 (String) input.get("name"),
                 input.getOrDefault("description", "").toString(),
                 Double.parseDouble(input.get("price").toString()),
