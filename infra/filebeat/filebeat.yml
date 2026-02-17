@@ -1,0 +1,64 @@
+filebeat.autodiscover:
+  providers:
+    - type: docker
+      hints.enabled: true
+      templates:
+        # Services with JSON logging (prod profile)
+        - condition:
+            or:
+              - contains:
+                  docker.container.name: "product-command-service"
+              - contains:
+                  docker.container.name: "order-service"
+              - contains:
+                  docker.container.name: "payment-service"
+              - contains:
+                  docker.container.name: "inventory-service"
+              - contains:
+                  docker.container.name: "product-query-service"
+              - contains:
+                  docker.container.name: "serendibmall-bff"
+              - contains:
+                  docker.container.name: "serendib-frontend"
+          config:
+            - type: container
+              paths:
+                - /var/lib/docker/containers/${data.docker.container.id}/*.log
+              processors:
+                - decode_json_fields:
+                    fields: ["message"]
+                    target: ""
+                    overwrite_keys: true
+                    add_error_key: true
+
+        # Default for infrastructure containers
+        - config:
+            - type: container
+              paths:
+                - /var/lib/docker/containers/${data.docker.container.id}/*.log
+
+processors:
+  - add_docker_metadata:
+      host: "unix:///var/run/docker.sock"
+  - add_fields:
+      target: ""
+      fields:
+        environment: "local"
+
+output.elasticsearch:
+  hosts: ["http://elasticsearch:9200"]
+  indices:
+    - index: "serendibmall-logs-%{+yyyy.MM.dd}"
+
+setup.template:
+  name: "serendibmall-logs"
+  pattern: "serendibmall-logs-*"
+  settings:
+    index:
+      number_of_shards: 1
+      number_of_replicas: 0
+
+setup.ilm.enabled: false
+
+logging.level: warning
+logging.to_stderr: true

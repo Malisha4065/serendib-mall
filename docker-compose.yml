@@ -295,6 +295,22 @@ services:
       timeout: 5s
       retries: 5
 
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.1
+    container_name: serendib-filebeat
+    user: root
+    command: filebeat -e --strict.perms=false
+    volumes:
+      - ./infra/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - serendib-net
+    restart: on-failure
+
 networks:
   serendib-net:
     driver: bridge
@@ -303,3 +319,4 @@ volumes:
   postgres_data:
   es_data:
   redpanda_data:
+
