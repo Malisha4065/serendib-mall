@@ -57,6 +57,7 @@ dependencies {
 	testImplementation("org.testcontainers:elasticsearch")
 	testImplementation("org.testcontainers:kafka")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+	runtimeOnly("net.logstash.logback:logstash-logback-encoder:7.4")
 }
 
 dependencyManagement {

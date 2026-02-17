@@ -59,6 +59,7 @@ dependencies {
 	testImplementation("org.springframework.grpc:spring-grpc-test")
 	testImplementation("org.springframework.security:spring-security-test")
 	testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+	runtimeOnly("net.logstash.logback:logstash-logback-encoder:7.4")
 }
 
 dependencyManagement {
