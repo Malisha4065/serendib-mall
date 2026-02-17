@@ -43,13 +43,6 @@ CREATE TABLE IF NOT EXISTS inventory_outbox (
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
--- Seed inventory data for testing
-INSERT INTO inventory (id, product_id, quantity) VALUES
-    ('inv-001', 'product-001', 100),
-    ('inv-002', 'product-002', 50),
-    ('inv-003', 'product-003', 25),
-    ('inv-004', 'product-004', 0)
-ON CONFLICT (product_id) DO NOTHING;
 
 -- Payment database setup
 CREATE DATABASE payment_db;
