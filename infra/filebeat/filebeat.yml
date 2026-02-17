@@ -3,7 +3,7 @@ filebeat.autodiscover:
     - type: docker
       hints.enabled: true
       templates:
-        # Services with JSON logging (prod profile)
+        # Spring Boot services (JSON logging with prod profile)
         - condition:
             or:
               - contains:
@@ -18,8 +18,6 @@ filebeat.autodiscover:
                   docker.container.name: "product-query-service"
               - contains:
                   docker.container.name: "serendibmall-bff"
-              - contains:
-                  docker.container.name: "serendib-frontend"
           config:
             - type: container
               paths:
@@ -31,8 +29,11 @@ filebeat.autodiscover:
                     overwrite_keys: true
                     add_error_key: true
 
-        # Default for infrastructure containers
-        - config:
+        # Frontend (nginx logs)
+        - condition:
+            contains:
+              docker.container.name: "serendib-frontend"
+          config:
             - type: container
               paths:
                 - /var/lib/docker/containers/${data.docker.container.id}/*.log
@@ -40,24 +41,62 @@ filebeat.autodiscover:
 processors:
   - add_docker_metadata:
       host: "unix:///var/run/docker.sock"
-  - add_fields:
-      target: ""
+
+  # Copy container name to a clean field (avoid 'service' which conflicts with Filebeat's mapping)
+  - copy_fields:
       fields:
-        environment: "local"
+        - from: container.name
+          to: service_name
+      fail_on_error: false
+      ignore_missing: true
+
+  # Drop logs from infra containers
+  - drop_event:
+      when:
+        or:
+          - contains:
+              container.name: "serendib-postgres"
+          - contains:
+              container.name: "serendib-redis"
+          - contains:
+              container.name: "serendib-redpanda"
+          - contains:
+              container.name: "serendib-elasticsearch"
+          - contains:
+              container.name: "serendib-kibana"
+          - contains:
+              container.name: "serendib-debezium"
+          - contains:
+              container.name: "serendib-filebeat"
+          - contains:
+              container.name: "serendib-zipkin"
+          - contains:
+              container.name: "serendib-redpanda-console"
+
+  # Drop all the noisy metadata fields
+  - drop_fields:
+      fields:
+        - agent
+        - ecs
+        - host
+        - input
+        - log
+        - stream
+        - container
+        - docker
+        - "@version"
+        - level_value
+        - service
+      ignore_missing: true
 
 output.elasticsearch:
   hosts: ["http://elasticsearch:9200"]
   indices:
     - index: "serendibmall-logs-%{+yyyy.MM.dd}"
+  bulk_max_size: 256
+  worker: 1
 
-setup.template:
-  name: "serendibmall-logs"
-  pattern: "serendibmall-logs-*"
-  settings:
-    index:
-      number_of_shards: 1
-      number_of_replicas: 0
-
+setup.template.enabled: false
 setup.ilm.enabled: false
 
 logging.level: warning
